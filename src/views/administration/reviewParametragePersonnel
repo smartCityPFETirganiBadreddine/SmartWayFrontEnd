@@ -1,0 +1,774 @@
+import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TablePagination from '@mui/material/TablePagination';
+import TableRow from '@mui/material/TableRow';
+import { getAllPersonnel, remove, update, create } from 'api/personnel';
+import React, { useEffect, useState } from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import {
+    Button,
+    Card,
+    Checkbox,
+    FormControl,
+    FormControlLabel,
+    FormGroup,
+    Grid,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Modal,
+    Radio,
+    RadioGroup,
+    Select,
+    TextField,
+    Typography
+} from '@mui/material';
+import { Box } from '@mui/system';
+import { makeStyles } from '@material-ui/core/styles';
+
+function createData(personnel, idPersonnel, handleEditClick, handleDeleteClick) {
+    const { id, userName, cin, email, password, matricule, firstName, lastName, phone, enabled, branch } = personnel;
+    return {
+        id: id,
+        cin: cin,
+        matricule: matricule,
+        email: email,
+        password: password,
+        login: userName,
+        name: lastName,
+        prenom: firstName,
+        phone,
+        actif: enabled ? 'Oui' : 'Non',
+        branch: branch?.name || '',
+        action: (
+            <div>
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ backgroundColor: '#0A5EE6', marginRight: '10px', borderRadius: '5px' }}
+                >
+                    <EditIcon sx={{ color: '#FFFFFF' }} onClick={() => handleEditClick(personnel)} />
+                </button>
+                <button type="button" className="btn btn-primary" style={{ backgroundColor: '#D86767', borderRadius: '5px' }}>
+                    <DeleteForeverIcon sx={{ color: '#FFFFFF' }} onClick={() => handleDeleteClick(idPersonnel)} />
+                </button>
+            </div>
+        )
+    };
+}
+const styleModalx = {
+    backdropFilter: 'blur(5px)' // Add this line to make the background blurry
+};
+const styleModal = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '80%',
+    height: '95%',
+    bgcolor: 'background.paper',
+    border: '2px solid #000',
+    boxShadow: 24,
+    borderRadius: '15px',
+    p: 4,
+
+    overflowY: 'scroll'
+};
+const useStyles = makeStyles((theme) => ({
+    radioGroup: {
+        display: 'flex',
+        flexDirection: 'row'
+    }
+}));
+
+function ParametragePersonnel({ data }) {
+    const handleEditClick = (Personnel) => {
+        setSelectedPersonnel(Personnel);
+        // Open the modal for editing personnel
+        setOpen(true);
+    };
+
+    const [rows, setRows] = useState([]);
+    const [fetchData, setFetchData] = useState(false);
+    //load data
+    async function fetchPersonnelData() {
+        try {
+            const { data: personnelData } = await getAllPersonnel();
+            const personnelList = personnelData.map((personnel) =>
+                createData(personnel, personnel?.id, handleEditClick, handleDeleteClick)
+            );
+            setRows(personnelList);
+        } catch (error) {
+            console.error('Error fetching personnel data:', error);
+        }
+    }
+
+    useEffect(() => {
+        fetchPersonnelData();
+    }, [fetchData]);
+    //end load data
+    //delete
+
+    async function handleDeleteClick(idPersonnel) {
+        try {
+            await remove(idPersonnel);
+            alert('Utilisateur bien supprimé');
+            const { data: personnelData } = await getAllPersonnel();
+            console.log('p********', personnelData);
+
+            const personnelList = personnelData.map((personnel) =>
+                createData(personnel, personnel?.id, handleEditClick, handleDeleteClick)
+            );
+            setRows(personnelList);
+            setFetchData(!fetchData);
+        } catch (error) {
+            console.error('Error deleting personnel:', error);
+            alert("Une erreur est survenue lors de la suppression de l'utilisateur.");
+        }
+    }
+    //update
+    async function handleSubmitType(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.currentTarget);
+        const roleName = formData.get('roles') ? formData.get('roles') : 'ROLE_ADMIN';
+        const user = {
+            userName: formData.get('userName'),
+            email: formData.get('email'),
+            enabled: formData.get('enabled') === 'on',
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            phone: formData.get('phone'),
+            branch: { id: parseInt(formData.get('branch')) },
+            matricule: formData.get('matricule'),
+            chargeDeTravaux: formData.get('chargeDeTravaux') === 'true',
+            cin: formData.get('cin'),
+            password: formData.get('password'),
+            roles: [{ name: roleName }]
+        };
+        await update(formData.get('id'), user);
+
+        alert('Utilisateur bien modifié');
+
+        handleClose();
+
+        setFetchData(!fetchData);
+    }
+    //end update
+    const handleOpen = () => setOpen(true);
+    const handleClose = () => setOpen(false);
+    const [open, setOpen] = React.useState(false);
+    const [personnel, setPersonnel] = React.useState([]);
+    const [selectedProfile, setSelectedProfile] = React.useState('option1');
+    const [selectedBranch, setSelectedBranch] = React.useState('electricite');
+
+    const handleProfileChange = (event) => {
+        setSelectedProfile(event.target.value);
+    };
+    const handleBranchChange = (event) => {
+        setSelectedPersonnel({
+            ...selectedPersonnel,
+            branch: { id: parseInt(event.target.value) }
+        });
+    };
+    const classes = useStyles();
+
+    const columns = [
+        { id: 'login', label: 'Login', minWidth: 170 },
+        { id: 'name', label: 'Nom', minWidth: 100 },
+        {
+            id: 'prenom',
+            label: 'Prénom',
+            minWidth: 170,
+            align: 'right',
+            format: (value) => value.toLocaleString('en-US')
+        },
+        {
+            id: 'phone',
+            label: 'Telephone',
+            minWidth: 170,
+            align: 'right',
+            format: (value) => value.toLocaleString('en-US')
+        },
+        {
+            id: 'actif',
+            label: 'Actif',
+            minWidth: 170,
+            align: 'right'
+        },
+        {
+            id: 'branch',
+            label: 'Branche',
+            minWidth: 170,
+            align: 'right',
+            format: (value) => value.toFixed(2)
+        },
+        {
+            id: 'action',
+            label: 'Actions',
+            minWidth: 170,
+            align: 'right',
+            format: (value) => value.toFixed(2)
+        }
+    ];
+
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(10);
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+    //update Personnel
+    const [selectedPersonnel, setSelectedPersonnel] = useState({});
+    //end update Personnel
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+        setRowsPerPageOptions(rowsPerPageOptions.filter((option) => option <= event.target.value));
+    };
+    const [searchText, setSearchText] = useState('');
+    const filteredItems = rows.filter((row) =>
+        Object.values(row).some((value) => typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase()))
+    );
+    const [rowsPerPageOptions, setRowsPerPageOptions] = useState([10, 25, 50, 100]);
+    //add Personnel
+    const handleOpensave = () => setOpensave(true);
+    const handleClosesave = () => setOpensave(false);
+    const [opensave, setOpensave] = React.useState(false);
+    const [personnelsave, setPersonnelsave] = React.useState([]);
+
+    const [enabledsave, setEnabledsave] = React.useState(false);
+
+    const handleSubmitTypesave = (event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+
+        const userName = formData.get('userName');
+        const email = formData.get('email');
+        const enabled = formData.get('enabled') === 'on';
+        const firstName = formData.get('firstName');
+        const lastName = formData.get('lastName');
+        const phone = formData.get('phone');
+        const branchId = parseInt(formData.get('branch'));
+        const matricule = formData.get('matricule');
+        const chargeDeTravaux = formData.get('chargeDeTravaux') === 'true';
+        const cin = formData.get('cin');
+        const password = formData.get('password');
+        const roles = [
+            {
+                name: 'ROLE_ADMIN'
+            }
+        ];
+
+        const user = {
+            userName,
+            email,
+            enabled,
+            firstName,
+            lastName,
+            phone,
+            branch: {
+                id: branchId
+            },
+            matricule,
+            chargeDeTravaux,
+            cin,
+            password,
+            roles: roles
+        };
+        console.log(user);
+
+        create(user).then((response) => {
+            window.location.reload();
+            alert('Utilisateur bien ajouté');
+        });
+
+        handleClosesave();
+    };
+
+    const [selectedProfilesave, setSelectedProfilesave] = React.useState('option1');
+    const [selectedBranchsave, setSelectedBranchsave] = React.useState('electricite');
+
+    const handleProfileChangesave = (event) => {
+        setSelectedProfilesave(event.target.value);
+    };
+    const handleBranchChangesave = (event) => {
+        setSelectedBranchsave(event.target.value);
+    }; //end add personnel
+    return (
+        <>
+            {/* Modal add Personnel */}
+            <Modal
+                sx={styleModalx}
+                open={opensave}
+                onClose={handleClosesave}
+                aria-labelledby="modal-modal-title"
+                aria-describedby="modal-modal-description"
+            >
+                <Box sx={styleModal}>
+                    <Typography id="modal-modal-title" variant="h4" component="h2">
+                        AJOUT PERSONNEL :
+                    </Typography>
+
+                    <form onSubmit={handleSubmitTypesave}>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Nom *
+                                </Typography>
+                                <TextField id="firstName" name="firstName" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    CIN *
+                                </Typography>
+                                <TextField id="cin" name="cin" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Prénom *:
+                                </Typography>
+                                <TextField id="lastName" name="lastName" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Matricule *:
+                                </Typography>
+                                <TextField id="matricule" name="matricule" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Nom d'utilisateur :
+                                </Typography>
+                                <TextField id="userName" name="userName" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Tél *:
+                                </Typography>
+                                <TextField id="phone" name="phone" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Email *:
+                                </Typography>
+                                <TextField id="email" name="email" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6} sx={{ mt: 4 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Selectionner un Profile</InputLabel>
+                                    <Select id="roles" name="roles" value={selectedProfilesave} onChange={handleProfileChangesave}>
+                                        <MenuItem value="ROLE_ADMIN">ROLE_ADMIN</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Mot de passe * :
+                                </Typography>
+                                <TextField id="password" name="password" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Branche * :
+                                </Typography>
+                                <FormControl component="fieldset">
+                                    <RadioGroup
+                                        aria-label="branche"
+                                        name="branch"
+                                        value={selectedBranchsave}
+                                        onChange={handleBranchChangesave}
+                                        className={classes.radioGroup}
+                                    >
+                                        <FormControlLabel value="1" control={<Radio />} label="Electricite" />
+                                        <FormControlLabel value="2" control={<Radio />} label="Eau potable" />
+                                        <FormControlLabel value="3" control={<Radio />} label="Assainissement" />
+                                    </RadioGroup>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Confirmation du mot de passe :
+                                </Typography>
+                                <TextField id="passwordConfirmation" name="passwordConfirmation" variant="outlined" fullWidth />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Actif * :
+                                </Typography>
+
+                                <FormGroup>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={enabledsave}
+                                                onChange={(event) => setEnabledsave(event.target.checked)}
+                                                id="enabled"
+                                                name="enabled"
+                                                color="primary"
+                                            />
+                                        }
+                                        label="Actif"
+                                    />
+                                </FormGroup>
+                            </Grid>
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                            <Button variant="outlined" onClick={handleClosesave} sx={{ mr: 2 }}>
+                                Annuler
+                            </Button>
+                            <Button type="submit" variant="contained">
+                                Enregistrer
+                            </Button>
+                        </Box>
+                    </form>
+                </Box>
+            </Modal>
+
+            {/* Modal update Personnel */}
+            <Modal
+                sx={styleModalx}
+                open={open}
+                onClose={handleClose}
+                aria-labelledby="modal-modal-title"
+                aria-describedby="modal-modal-description"
+            >
+                <Box sx={styleModal}>
+                    <Typography id="modal-modal-title" variant="h4" component="h2">
+                        AJOUT PERSONNEL :
+                    </Typography>
+
+                    <form onSubmit={handleSubmitType}>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Nom *
+                                </Typography>
+                                <input
+                                    type="hidden"
+                                    value={selectedPersonnel?.id}
+                                    name="id"
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            id: e.target.value
+                                        })
+                                    }
+                                />
+                                <TextField
+                                    id="firstName"
+                                    name="firstName"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.firstName}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            firstName: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    CIN *
+                                </Typography>
+                                <TextField
+                                    id="cin"
+                                    name="cin"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.cin}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            cin: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Prénom *:
+                                </Typography>
+                                <TextField
+                                    id="lastName"
+                                    name="lastName"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.lastName}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            lastName: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Matricule *:
+                                </Typography>
+                                <TextField
+                                    id="matricule"
+                                    name="matricule"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.matricule}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            matricule: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Nom d'utilisateur :
+                                </Typography>
+                                <TextField
+                                    id="userName"
+                                    name="userName"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.userName}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            userName: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Tél *:
+                                </Typography>
+                                <TextField
+                                    id="phone"
+                                    name="phone"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.phone}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            phone: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Email *:
+                                </Typography>
+                                <TextField
+                                    id="email"
+                                    name="email"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.email}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            email: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6} sx={{ mt: 4 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Selectionner un Profile</InputLabel>
+                                    <Select id="roles" name="roles" onChange={handleProfileChange}>
+                                        <MenuItem value="ROLE_ADMIN">ROLE_ADMIN</MenuItem>
+                                        <MenuItem value="ROLE_USER">ROLE_USER</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Mot de passe * :
+                                </Typography>
+                                <TextField
+                                    id="password"
+                                    name="password"
+                                    variant="outlined"
+                                    fullWidth
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            password: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Branche * :
+                                </Typography>
+                                <FormControl component="fieldset">
+                                    <RadioGroup
+                                        aria-label="branche"
+                                        name="branch"
+                                        value={selectedPersonnel?.branch?.id}
+                                        onChange={handleBranchChange}
+                                        className={classes.radioGroup}
+                                    >
+                                        <FormControlLabel value="1" control={<Radio />} label="Electricite" />
+                                        <FormControlLabel value="2" control={<Radio />} label="Eau potable" />
+                                        <FormControlLabel value="3" control={<Radio />} label="Assainissement" />
+                                    </RadioGroup>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Confirmation du mot de passe :
+                                </Typography>
+                                <TextField
+                                    id="passwordConfirmation"
+                                    name="passwordConfirmation"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={selectedPersonnel?.passwordConfirmation}
+                                    onChange={(e) =>
+                                        setSelectedPersonnel({
+                                            ...selectedPersonnel,
+                                            passwordConfirmation: e.target.value
+                                        })
+                                    }
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                                    Actif * :
+                                </Typography>
+
+                                <FormGroup>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={selectedPersonnel?.enabled}
+                                                onChange={(e) =>
+                                                    setSelectedPersonnel({
+                                                        ...selectedPersonnel,
+                                                        enabled: e.target.checked
+                                                    })
+                                                }
+                                                id="enabled"
+                                                name="enabled"
+                                                color="primary"
+                                            />
+                                        }
+                                        label="Actif"
+                                    />
+                                </FormGroup>
+                            </Grid>
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                            <Button variant="outlined" onClick={handleClose} sx={{ mr: 2 }}>
+                                Annuler
+                            </Button>
+                            <Button type="submit" variant="contained">
+                                Enregistrer
+                            </Button>
+                        </Box>
+                    </form>
+                </Box>
+            </Modal>
+            <Card>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={10}>
+                        <Typography variant="h4" ml={3}>
+                            LISTE DES EQUIPE
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={2}>
+                        <Button variant="contained" onClick={handleOpensave} fullWidth>
+                            <AddCircleOutlineIcon /> Ajouter
+                        </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                        {/*table*/}
+                        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={3} ml={2}>
+                                    <TextField
+                                        label="Rechercher un personnel..."
+                                        variant="outlined"
+                                        margin="normal"
+                                        value={searchText}
+                                        fullWidth={true}
+                                        onChange={(e) => setSearchText(e.target.value)}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <i className="fas fa-search"></i>
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={12}>
+                                    <TableContainer sx={{ maxHeight: 440 }}>
+                                        <Table stickyHeader aria-label="sticky table">
+                                            <TableHead>
+                                                <TableRow>
+                                                    {columns.map((column) => (
+                                                        <TableCell
+                                                            key={column.id}
+                                                            align={column.align}
+                                                            style={{ minWidth: column.minWidth }}
+                                                        >
+                                                            {column.label}
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {filteredItems.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
+                                                    return (
+                                                        <TableRow hover role="checkbox" tabIndex={-1} key={row.code}>
+                                                            {columns.map((column) => {
+                                                                const value = row[column.id];
+                                                                return (
+                                                                    <TableCell key={column.id} align={column.align}>
+                                                                        {column.format && typeof value === 'number'
+                                                                            ? column.format(value)
+                                                                            : value}
+                                                                    </TableCell>
+                                                                );
+                                                            })}
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                    <TablePagination
+                                        rowsPerPageOptions={rowsPerPageOptions}
+                                        component="div"
+                                        count={rows.length}
+                                        rowsPerPage={rowsPerPage}
+                                        page={page}
+                                        onPageChange={handleChangePage}
+                                        onRowsPerPageChange={handleChangeRowsPerPage}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Paper>
+                    </Grid>
+                </Grid>
+            </Card>
+        </>
+    );
+}
+
+export default ParametragePersonnel;

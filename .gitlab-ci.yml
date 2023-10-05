@@ -1,0 +1,17 @@
+# .gitlab-ci.yml for frontend
+
+# Define the stages of the CI/CD pipeline
+stages:
+    - build
+
+# Define the jobs
+build:
+    stage: build
+    image: node:16.16.0-alpine
+    script:
+        - cd front-end-smart-city # Adjust the directory if needed
+        - npm install --legacy-peer-deps
+        - npm run build
+    artifacts:
+        paths:
+            - front-end-smart-city/build/
